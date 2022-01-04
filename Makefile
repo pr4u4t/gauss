@@ -1,6 +1,6 @@
 CC=g++
-CFLAGS=-I.
-DEPS = #hellomake.h
+CFLAGS=-I. -D_DEBUG=0
+DEPS = 
 OBJ = gauss.o
 
 %.o: %.cxx
@@ -8,3 +8,6 @@ OBJ = gauss.o
 
 solver: $(OBJ)
 	$(CC) -o $@ $^ $(CFLAGS)
+
+clean:
+	rm -f solver $(OBJ)

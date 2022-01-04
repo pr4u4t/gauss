@@ -7,11 +7,10 @@
 #include <cstring>
 #include <memory>
 #include <cmath>
+#include <utility>
 
 //separator kolumny w pliku csv
 #define CSVDLM ';'
-//flaga odpowiedzialna za wlaczenie wypisywania komunikatow ulatwiajacych badanie zachowania programu
-#define _DEBUG 0
 
 /*
  * wyliczenie dostepnych metod wyboru czesciowego dla wyboru pelnego nalezy podac:
@@ -175,6 +174,12 @@ struct _Matrix{
          * int b        poprawny indeks wiersza drugiego
          */
         bool swap_row(int a, int b){
+            if(a == b){
+                return true;
+            }
+            #if _DEBUG
+            std::cout << "zamiana rzedow " << a << " i " << b << " miejscami" << std::endl;
+            #endif
             if(a >= this->_rows || a < 0 || b >= this->_rows || b < 0){
                 return false;
             }
@@ -195,6 +200,13 @@ struct _Matrix{
          * int b        poprawny indeks drugiej kolumny
          */
         bool swap_column(int a, int b){
+            if(a == b){
+                return true;
+            }
+                
+            #if _DEBUG
+            std::cout << "zamiana kolumn " << a << " i " << b << " miejscami" << std::endl;
+            #endif
             if(a >= this->_columns || a < 0 || b >= this->_columns || b < 0){
                 return false;
             }
@@ -215,21 +227,28 @@ struct _Matrix{
          * int column   kolumna w jakiej najwiekszy element ma byc poszukiwany
          * int idx      wiersz od ktorego ma zostac wszczete poszukiwanie
          */
-        int abs_max_in_column_after(int column, int idx, int stop = -1) const{
-            if(idx >= this->_rows) return -1;
-            if(stop <= 0) stop = this->_rows;
+        std::pair<int,int> abs_max_in_column_after(int row, int column, int stop = -1) const{
+            if(row >= this->_rows){
+               row = this->_rows-1; 
+            }
+            if(column >= this->_columns){
+                column = this->_columns-1;
+            }
+            if(stop <= 0){
+                stop = this->_rows;
+            }
             
-            int ret = idx;
-            int cur = abs((*this)[idx+1][column]);
+            int ret = row;
+            int cur = abs((*this)[row][column]);
             
-            for(int i = idx+1; idx < this->_rows; ++i){
-                if(abs((*this)[idx][column]) > cur){
-                    ret = idx;
-                    cur = abs((*this)[idx][column]);
+            for(int i = row+1; i < stop; ++i){
+                if(abs((*this)[i][column]) > cur){
+                    ret = i;
+                    cur = abs((*this)[i][column]);
                 }
             }
             
-            return ret;
+            return std::pair<int,int>(ret,column);
         }
         
         /*
@@ -240,26 +259,42 @@ struct _Matrix{
          * int idx      indeks kolumny od ktorej ma zostac wszczete poszukiwanie
          * int stop     indeks kolumny w ktorej poszukiwanie ma zostac zakonczone
          */
-        int abs_max_in_row_after(int row, int idx, int stop = -1) const{
-            if(idx >= this->_columns) return -1;
-            if(stop <= 0) stop = this->_columns;
+        std::pair<int,int> abs_max_in_row_after(int row, int column, int stop = -1) const{
+            if(column >= this->_columns){
+                column = this->_columns;
+            }
+            if(stop <= 0){
+                stop = this->_columns;
+            }
             
-            int ret = idx;
-            int cur = abs((*this)[row][idx+1]);
+            int ret = column;
+            int cur = abs((*this)[row][column]);
 
-            for(int i = idx+1; idx < this->_rows; ++i){
-                if(abs((*this)[row][idx]) > cur){
-                    ret = idx;
-                    cur = abs((*this)[row][idx]);
+            for(int i = column+1; i < stop; ++i){
+                if(abs((*this)[row][i]) > cur){
+                    ret = i;
+                    cur = abs((*this)[row][i]);
+                }
+            }
+            
+            return std::pair<int,int>(row,ret);
+        }
+        
+        std::pair<int,int> abs_max_in_sub_matrix(int row_start, int column_start, int row_end, int column_end) const{
+            std::pair<int,int> ret((row_start < 0) ? 0 : row_start,(column_start < 0) ? 0 : column_start);
+            int val = abs((*this)[ret.first][ret.second]);
+            
+            for(int i = row_start; i < row_end; ++i){
+                for(int j = column_start; j < column_end; ++j){
+                    if((*this)[i][j] > val){
+                        val = (*this)[i][j];
+                        ret.first = i;
+                        ret.second = j;
+                    }
                 }
             }
             
             return ret;
-        }
-        
-        int abs_max_in_sub_matrix(){
-            
-            
         }
 };
 
@@ -340,18 +375,44 @@ bool read_matrices(std::string filePath, Matrix<T> &a, Matrix<T> &b){
 }
 
 template<typename T>
-void gauss_row(Matrix<T>& g, int row, int column){
-    
+void gauss_row(Matrix<T>& g, int row_start, int column_start, int row_end, int column_end){
+    #if _DEBUG
+    std::cout << "wybieranie najwiekszego elementu w wierszu" << std::endl;
+    #endif
+    std::pair<int,int> found = g.abs_max_in_row_after(row_start,column_start, g.rows());
+    std::pair<int,int> old(row_start,column_start);
+    if(found != old){
+        g.swap_column(old.second,found.second);
+    }
 }
 
 template<typename T>
-void gauss_column(Matrix<T>& g, int row, int column){
-    
+void gauss_column(Matrix<T>& g, int row_start, int column_start, int row_end, int column_end){
+    #if _DEBUG
+    std::cout << "wybieranie najwiekszego elementu w kolumnie" << std::endl;
+    #endif
+    std::pair<int,int> found = g.abs_max_in_column_after(row_start,column_start, g.rows());
+    std::pair<int,int> old(row_start,column_start);
+    if(found != old){
+        g.swap_row(old.first,found.first);
+    }
 }
 
 template<typename T>
-void gauss_row_column(Matrix<T>& g, int row, int column){
-    
+void gauss_row_column(Matrix<T>& g, int row_start, int column_start, int row_end, int column_end){
+    #if _DEBUG
+    std::cout << "wybieranie najwiekszego elementu w pod macierzy" << std::endl;
+    #endif
+    std::pair<int,int> found = g.abs_max_in_sub_matrix(row_start,column_start,row_end,column_end);
+    std::pair<int,int> old(row_start,column_start);
+    if(found != old){
+        if(old.first != found.first){
+            g.swap_row(old.first,found.first);
+        }
+        if(old.second != found.second){
+            g.swap_column(old.second,found.second);
+        }
+    }
 }
 
 /*
@@ -364,18 +425,18 @@ void gauss_row_column(Matrix<T>& g, int row, int column){
 template<typename T>
 Matrix<T>& gauss(Matrix<T>& g, int chooser = 0){
     
-    void (*chooser_func)(Matrix<T>& g, int row, int column) = 0;
-    if(chooser & ( GAUSS_CHOOSER::ROW | GAUSS_CHOOSER::COLUMN)){
+    void (*chooser_func)(Matrix<T>& g, int row_start, int column_start, int row_end, int column_end) = 0;
+    if(chooser == ( GAUSS_CHOOSER::ROW | GAUSS_CHOOSER::COLUMN)){
         chooser_func = gauss_row_column<T>;
-    }else if(chooser & GAUSS_CHOOSER::ROW){
+    }else if(chooser == GAUSS_CHOOSER::ROW){
         chooser_func = gauss_row<T>;
-    }else if(chooser & GAUSS_CHOOSER::ROW){
+    }else if(chooser == GAUSS_CHOOSER::ROW){
         chooser_func = gauss_column<T>;
     }
     
     for(int i = 0; i < g.rows(); ++i){
         if(chooser_func){ 
-            chooser_func(g,0,0);
+            chooser_func(g,i,i,g.rows(),g.rows());
         }
         
         for(int j = i+1; j < g.rows(); ++j){
@@ -440,7 +501,11 @@ Matrix<T>& diagonal(Matrix<T>& g){
 }
 /*
  * szablon funkcji odpowiedzialnej za algorytm gaussa, dane wejsciowe wczytywane sa z pliku
- * 
+ * parametr `chooser` umozliwia wybranie metody wybierania elementu podstawowego. Algorytm podzielony jest na 
+ * kilka etapów najpierw wczytywane są macierze a i b, następnie na ich podstawie tworzona jest macierz rozszerzona,
+ * ktora poddawana jest eliminacji, otrzymana w ten sposob macierz poddawana jest odwrotnej eliminacji, aby wyzerowac
+ * elementy powyzej gornej przekatnej, w ostatecznym kroku wszystkie elementy na głównej przekatnej sprowadzane są do wartosci
+ * `1`, tak powstale rozwiazania sa wypisywane na standardowe wyjscie.  
  */
 template<typename T>
 bool gauss_solve(const std::string& filePath, int chooser = 0){
@@ -496,22 +561,22 @@ bool gauss_solve(const std::string& filePath, int chooser = 0){
 int main(int argc, char **argv){
 
     #if _DEBUG
-    std::cout << "zadanie 1" << std::endl;
+    std::cout << "========================<zadanie 1>=======================" << std::endl;
     #endif
     zadanie1("zadanie1.csv");
     
     #if _DEBUG
-    std::cout << "zadanie 2" << std::endl;
+    std::cout << "========================<zadanie 2>=======================" << std::endl;
     #endif
     zadanie2("zadanie2.csv");
     
     #if _DEBUG
-    std::cout << "zadanie 3" << std::endl;
+    std::cout << "========================<zadanie 3>=======================" << std::endl;
     #endif
     zadanie3("zadanie3.csv");
     
     #if _DEBUG
-    std::cout << "zadanie 4" << std::endl;
+    std::cout << "========================<zadanie 4>=======================" << std::endl;
     #endif
     zadanie4("zadanie4.csv");
     
