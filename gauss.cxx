@@ -155,7 +155,8 @@ struct _Matrix{
             if(row > this->_rows){
                 throw std::invalid_argument("wiersz wiekszy niz calkowita liczba wierszy");
             }
-            
+            //przekazujemy do konstruktora struktury MatrxiRow przesuniety wskaznik do danych o
+            //rzad*kolumne
             return MatrixRow<T>(this->columns(),this->_data.get()+row*this->columns());
         }
         
@@ -163,7 +164,8 @@ struct _Matrix{
             if(row > this->_rows){
                 throw std::invalid_argument("wiersz wiekszy niz calkowita liczba wierszy");
             }
-            
+            //przekazujemy do konstruktora struktury MatrxiRow przesuniety wskaznik do danych o
+            //rzad*kolumne
             return MatrixRow<T>(this->columns(),this->_data.get()+row*this->columns());
         }
         
@@ -203,7 +205,6 @@ struct _Matrix{
             if(a == b){
                 return true;
             }
-                
             #if _DEBUG
             std::cout << "zamiana kolumn " << a << " i " << b << " miejscami" << std::endl;
             #endif
@@ -222,10 +223,11 @@ struct _Matrix{
         
         /*
          * metoda sluzaca poszukiwaniu maksymalnego co do wartosci bezwglednej elementu w 
-         * danej kolumnie znajdujacego sie po indeksie wskaznym przez idx
+         * danej kolumnie znajdujacego sie po indeksie wskaznym przez row
          * parametry:
          * int column   kolumna w jakiej najwiekszy element ma byc poszukiwany
-         * int idx      wiersz od ktorego ma zostac wszczete poszukiwanie
+         * int row      wiersz od ktorego ma zostac wszczete poszukiwanie
+         * int stop     indeks wiersza w ktorym poszukiwanie ma zostac zakonczone
          */
         std::pair<int,int> abs_max_in_column_after(int row, int column, int stop = -1) const{
             if(row >= this->_rows){
@@ -253,10 +255,10 @@ struct _Matrix{
         
         /*
          * metoda sluzaca poszukiwaniu maksymalnego co do wartosci bezwglednej elementu w 
-         * danym wierszu znajdujacego sie po indeksie wskaznym przez idx
+         * danym wierszu znajdujacego sie po indeksie wskaznym przez column
          * parametry:
          * int row      indeks wiersza w jakim najwiekszy element ma byc poszukiwany
-         * int idx      indeks kolumny od ktorej ma zostac wszczete poszukiwanie
+         * int column   indeks kolumny od ktorej ma zostac wszczete poszukiwanie
          * int stop     indeks kolumny w ktorej poszukiwanie ma zostac zakonczone
          */
         std::pair<int,int> abs_max_in_row_after(int row, int column, int stop = -1) const{
@@ -280,6 +282,15 @@ struct _Matrix{
             return std::pair<int,int>(row,ret);
         }
         
+        /*
+         * metoda sluzaca poszukiwaniu maksymalnego co do wartosci bezwglednej elementu w 
+         * pod macierzy zaczynajacej sie od row_start,column_start a konczacej na row_end,column_end
+         * parametry:
+         * int row_start        indeks wiersza w jakim najwiekszy element ma byc poszukiwany
+         * int column_start     indeks kolumny od ktorej ma zostac rozpoczete poszukiwanie
+         * int row_end          indeks wiersza w ktorym poszukiwanie ma zostac zakonczone
+         * int column_end       indeks kolumny w ktorej poszukiwanie ma sie zakonczyc
+         */
         std::pair<int,int> abs_max_in_sub_matrix(int row_start, int column_start, int row_end, int column_end) const{
             std::pair<int,int> ret((row_start < 0) ? 0 : row_start,(column_start < 0) ? 0 : column_start);
             int val = abs((*this)[ret.first][ret.second]);
@@ -373,7 +384,10 @@ bool read_matrices(std::string filePath, Matrix<T> &a, Matrix<T> &b){
     
     return true;
 }
-
+/*
+ * szablony funkcji poszukiwania elementu podstawowego ujednolicone co do parametrow
+ * w celu wywylania ich przez wskaznik
+ */
 template<typename T>
 void gauss_row(Matrix<T>& g, int row_start, int column_start, int row_end, int column_end){
     #if _DEBUG
@@ -425,7 +439,9 @@ void gauss_row_column(Matrix<T>& g, int row_start, int column_start, int row_end
 template<typename T>
 Matrix<T>& gauss(Matrix<T>& g, int chooser = 0){
     
+    //wskaznik do funkcji poszukiwania
     void (*chooser_func)(Matrix<T>& g, int row_start, int column_start, int row_end, int column_end) = 0;
+    //wybor funkcji poszukiwania i ustawienie wskaznika
     if(chooser == ( GAUSS_CHOOSER::ROW | GAUSS_CHOOSER::COLUMN)){
         chooser_func = gauss_row_column<T>;
     }else if(chooser == GAUSS_CHOOSER::ROW){
@@ -435,6 +451,7 @@ Matrix<T>& gauss(Matrix<T>& g, int chooser = 0){
     }
     
     for(int i = 0; i < g.rows(); ++i){
+        //jezeli funkcja poszukiwania elementu podstawowego rozna od `0` uruchomienie jej na macierzy
         if(chooser_func){ 
             chooser_func(g,i,i,g.rows(),g.rows());
         }
@@ -559,7 +576,6 @@ bool gauss_solve(const std::string& filePath, int chooser = 0){
 #define zadanie4(plik) gauss_solve<double>(plik,GAUSS_CHOOSER::ROW|GAUSS_CHOOSER::COLUMN)
 
 int main(int argc, char **argv){
-
     #if _DEBUG
     std::cout << "========================<zadanie 1>=======================" << std::endl;
     #endif
