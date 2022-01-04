@@ -16,3 +16,5 @@ solver: $(OBJ)
 clean:
         rm -f solver $(OBJ)
 ```
+
+Aby zbudować należy skorzystać z komendy `make` bezpośrednio w katalogu źródeł programu
